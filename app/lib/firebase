@@ -1,8 +1,20 @@
-"use client";
+import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-import { useState, useEffect } from "react";
-import { auth, provider, db } from "../lib/firebase"; // <-- Change here (../lib/firebase)
-import { signInWithPopup, signOut, onAuthStateChanged, User } from "firebase/auth";
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
 
-// Ungaloda rest of the code appadiye irukattum...
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+// Mukhiyamana exports - ithu kandippa irukanum!
+export const auth = getAuth(app);
+export const provider = new GoogleAuthProvider(); // <--- Ithu thaan missing-ah irunthuchu
+export const db = getFirestore(app);
