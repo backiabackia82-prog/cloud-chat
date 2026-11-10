@@ -115,9 +115,7 @@ export default function ChatApp() {
             return (
               <div
                 key={msg.id}
-                className={`flex items-end gap-2 ${
-                  isMe ? "justify-end" : "justify-start"
-                }`}
+                className={`flex items-end gap-2 ${isMe ? "justify-end" : "justify-start"}`}
               >
                 {!isMe && (
                   <img
@@ -166,6 +164,11 @@ export default function ChatApp() {
             placeholder="Type a message..."
             className="flex-1 bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <button
-            type="submit"
-            className="bg-blue
+          <button type="submit" className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-medium transition">
+            Send
+          </button>
+        </form>
+      )}
+    </main>
+  );
+}
