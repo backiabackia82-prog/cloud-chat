@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
@@ -11,10 +11,9 @@ const firebaseConfig = {
   appId: "YOUR_APP_ID"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase safely
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Mukhiyamana exports - ithu kandippa irukanum!
 export const auth = getAuth(app);
-export const provider = new GoogleAuthProvider(); // <--- Ithu thaan missing-ah irunthuchu
+export const provider = new GoogleAuthProvider();
 export const db = getFirestore(app);
