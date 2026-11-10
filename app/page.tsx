@@ -1,159 +1,167 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { auth, provider, db } from './lib/firebase';
-import { signInWithPopup, signOut } from 'firebase/auth';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+export const dynamic = 'force-dynamic';
 
-export default function Home() {
-  const [user, authLoading] = useAuthState(auth);
-  const [roomId, setRoomId] = useState('general');
-  const [messages, setMessages] = useState<any[]>([]);
-  const [text, setText] = useState('');
-  const [loading, setLoading] = useState(false);
+import { useState, useEffect, useRef } from "react";
+import { auth, provider, db } from "@/lib/firebase";
+import { 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged, 
+  User 
+} from "firebase/auth";
+import { 
+  collection, 
+  addDoc, 
+  query, 
+  orderBy, 
+  onSnapshot, 
+  serverTimestamp 
+} from "firebase/firestore";
 
-  // Safe Google Sign-In Handler with error catching
-  const handleGoogleSignIn = async () => {
-    if (loading) return;
-    try {
-      setLoading(true);
-      await signInWithPopup(auth, provider);
-    } catch (error: any) {
-      // Ignore if user closed the popup window manually
-      if (error.code !== 'auth/cancelled-popup-request') {
-        console.error("Sign-in error:", error);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+interface Message {
+  id: string;
+  text: string;
+  uid: string;
+  displayName: string;
+  photoURL: string;
+  createdAt: any;
+}
 
+export default function ChatApp() {
+  const [user, setUser] = useState<User | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const dummyRef = useRef<HTMLDivElement>(null);
+
+  // Auth State Listener
   useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, 'rooms', roomId, 'messages'), orderBy('createdAt', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setMessages(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
     });
     return () => unsubscribe();
-  }, [user, roomId]);
+  }, []);
 
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!text.trim() || !user) return;
+  // Firestore Messages Listener
+  useEffect(() => {
+    const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Message[];
+      setMessages(msgs);
+      dummyRef.current?.scrollIntoView({ behavior: "smooth" });
+    });
+    return () => unsubscribe();
+  }, []);
 
+  // Google Login
+  const signIn = async () => {
     try {
-      await addDoc(collection(db, 'rooms', roomId, 'messages'), {
-        text,
-        createdAt: serverTimestamp(),
-        uid: user.uid,
-        displayName: user.displayName || 'Anonymous',
-        photoURL: user.photoURL || '',
-      });
-      setText('');
-    } catch (err) {
-      console.error("Error sending message:", err);
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Error signing in", error);
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-slate-900 text-white text-xl">
-        Loading...
-      </div>
-    );
-  }
+  // Send Message
+  const sendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || !user) return;
 
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-slate-900 text-white">
-        <h1 className="text-3xl font-bold mb-6">Cloud Chat Application</h1>
-        <button
-          onClick={handleGoogleSignIn}
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-lg font-semibold shadow-lg disabled:opacity-50 transition-all"
-        >
-          {loading ? 'Opening Popup...' : 'Sign in with Google'}
-        </button>
-      </div>
-    );
-  }
+    await addDoc(collection(db, "messages"), {
+      text: input,
+      uid: user.uid,
+      displayName: user.displayName || "Anonymous",
+      photoURL: user.photoURL || "",
+      createdAt: serverTimestamp(),
+    });
+
+    setInput("");
+    dummyRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
-    <div className="flex h-screen bg-slate-900 text-white">
-      {/* Sidebar */}
-      <div className="w-1/4 border-r border-slate-700 p-4 flex flex-col justify-between">
-        <div>
-          <h2 className="text-xl font-bold mb-4">Chat Rooms</h2>
-          <div className="space-y-2">
-            {['general', 'tech', 'random'].map((room) => (
-              <button
-                key={room}
-                onClick={() => setRoomId(room)}
-                className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
-                  roomId === room ? 'bg-blue-600' : 'hover:bg-slate-800'
+    <main className="flex flex-col h-screen bg-gray-900 text-white">
+      {/* Header */}
+      <header className="flex justify-between items-center p-4 bg-gray-800 shadow-md">
+        <h1 className="text-xl font-bold">☁️ Cloud Chat App</h1>
+        {user ? (
+          <div className="flex items-center gap-4">
+            <span className="text-sm hidden sm:inline">{user.displayName}</span>
+            <button
+              onClick={() => signOut(auth)}
+              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-medium transition"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={signIn}
+            className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium transition"
+          >
+            Sign in with Google
+          </button>
+        )}
+      </header>
+
+      {/* Chat Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {user ? (
+          messages.map((msg) => {
+            const isMe = msg.uid === user.uid;
+            return (
+              <div
+                key={msg.id}
+                className={`flex items-end gap-2 ${
+                  isMe ? "justify-end" : "justify-start"
                 }`}
               >
-                #{room}
-              </button>
-            ))}
+                {!isMe && (
+                  <img
+                    src={msg.photoURL || "https://via.placeholder.com/30"}
+                    alt="avatar"
+                    className="w-8 h-8 rounded-full"
+                  />
+                )}
+                <div
+                  className={`max-w-xs md:max-w-md px-4 py-2 rounded-lg text-sm ${
+                    isMe
+                      ? "bg-blue-600 text-white rounded-br-none"
+                      : "bg-gray-700 text-gray-200 rounded-bl-none"
+                  }`}
+                >
+                  <p className="text-xs text-gray-300 font-semibold mb-1">
+                    {msg.displayName}
+                  </p>
+                  <p className="break-words">{msg.text}</p>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <h2 className="text-2xl font-semibold mb-2">Welcome to Cloud Chat!</h2>
+            <p className="text-gray-400 mb-4">Please sign in with Google to start chatting.</p>
+            <button
+              onClick={signIn}
+              className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium transition"
+            >
+              Sign in with Google
+            </button>
           </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          <div className="text-sm text-slate-300 truncate">
-            👤 {user.displayName}
-          </div>
-          <button
-            onClick={() => signOut(auth)}
-            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition-colors"
-          >
-            Sign Out
-          </button>
-        </div>
+        )}
+        <div ref={dummyRef} />
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
-        <div className="p-4 border-b border-slate-700 font-bold text-lg bg-slate-900/50">
-          Room: #{roomId}
-        </div>
-
-        <div className="flex-1 p-4 overflow-y-auto space-y-4">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex flex-col ${
-                msg.uid === user.uid ? 'items-end' : 'items-start'
-              }`}
-            >
-              <span className="text-xs text-slate-400 mb-1">{msg.displayName}</span>
-              <div
-                className={`p-3 rounded-lg max-w-xs md:max-w-md break-words ${
-                  msg.uid === user.uid ? 'bg-blue-600 text-white' : 'bg-slate-800 text-white'
-                }`}
-              >
-                {msg.text}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <form onSubmit={sendMessage} className="p-4 border-t border-slate-700 flex gap-2 bg-slate-900/50">
+      {/* Input Form */}
+      {user && (
+        <form onSubmit={sendMessage} className="p-4 bg-gray-800 flex gap-2">
           <input
             type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-semibold transition-colors"
-          >
-            Send
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
+            className="flex-1 bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:
