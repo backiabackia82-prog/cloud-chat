@@ -1,0 +1,21 @@
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAI8MvC1jgGpcQ8NFiTom573pLScF_hEBc",
+  authDomain: "cloud-chat-d8a3c.firebaseapp.com",
+  projectId: "cloud-chat-d8a3c",
+  storageBucket: "cloud-chat-d8a3c.firebasestorage.app",
+  messagingSenderId: "452297143201",
+  appId: "1:452297143201:web:a9cb77d5edea65f9f651e0",
+  measurementId: "G-7Q7SGN1P9R"
+};
+
+// Initialize Firebase safely for Next.js
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+const db = getFirestore(app);
+
+export { auth, provider, db };
